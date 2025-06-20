@@ -1,8 +1,11 @@
 langchain==0.3.25
+langchain_community==0.3.25
+langchain-google-genai==2.1.5
 chromadb==1.0.13
 sentence-transformers==4.1.0
 langchain-core==0.3.65
 langchain-text-splitters==0.3.8
+langgraph.checkpoint.sqlite==2.0.10
 langsmith==0.3.45
 pydantic==2.11.7
 SQLAlchemy==2.0.41
@@ -23,3 +26,7 @@ pypika==0.48.9
 tqdm==4.67.1
 overrides==7.7.0
 importlib-resources==6.5.2
+langgraph==0.4.8
+
+
+
