@@ -1,9 +1,8 @@
-langchain==0.0.1  # Specify the exact version if needed
-langchain_community==0.0.1  # Specify the exact version if needed
-langchain_core==0.0.1  # Specify the exact version if needed
-langchain_google_genai==0.0.1  # Specify the exact version if needed
-langgraph==0.0.1  # Specify the exact version if needed
-pydantic==1.8.2  # Specify the exact version if needed
-sentence-transformers==2.2.0  # Specify the exact version if needed
-chromadb==0.3.1  # Specify the exact version if needed
-sqlite3  # SQLite is typically built-in with Python, so no need to install separately
+langchain==0.0.1
+langchain_community==0.0.1
+langchain_core==0.0.1
+langchain_google_genai==0.0.1
+langgraph==0.0.9  # Updated to an available version
+pydantic==1.8.2
+sentence-transformers==2.2.0
+chromadb==0.3.1
