@@ -14,7 +14,6 @@ PyYAML==6.0.2
 build==1.2.2.post1
 pybase64==1.4.1
 uvicorn==0.34.3
-numpy==2.0.2
 posthog==5.3.0
 typing-extensions==4.14.0
 onnxruntime==1.22.0
