@@ -7,11 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1KyWMBcWm9lCXU1U0sGcnq8M-5T2NkNxW
 """
 
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-
-# Use the 'avsolatorio/GIST-Embedding-v0' model trained for similarity tasks
-gist_model = SentenceTransformerEmbeddings(model_name="avsolatorio/GIST-Embedding-v0")
-
 # Update the import statement to include ToolMessage and AnyMessage from langchain_core.messages
 from typing import TypedDict, Annotated, Any
 from langchain.schema import SystemMessage, HumanMessage, AIMessage # Remove AnyMessage from here
@@ -22,7 +17,7 @@ from langgraph.graph import StateGraph, END
 import operator
 import sqlite3
 from langgraph.checkpoint.sqlite import SqliteSaver
-from langchain.vectorstores import Chroma
+
 
 # ─── Booking model & tools ────────────────────────────────────────────────────────
 from pydantic import BaseModel
@@ -44,28 +39,8 @@ class Booking(BaseModel):
 # In-memory store of bookings
 bookings: dict[str, Booking] = {}
 
-from langchain.schema import Document
 
-docs = [
-    Document(
-        page_content="Our address is 123 Main Street, Central Bengaluru, near MG Road metro station.",
-        metadata={"type": "location"}
-    ),
-    Document(
-        page_content="Standard check-in is between 2 PM and 3 PM; check-out by 12 PM noon.",
-        metadata={"type": "policy"}
-    ),
-    Document(
-        page_content="We offer free high‑speed Wi‑Fi, complimentary breakfast, a gym, indoor pool, room service, spa, and on-site parking.",
-        metadata={"type": "amenity"}
-    ),
-]
 
-vector_db = Chroma.from_documents(
-    documents=docs,
-    embedding=gist_model,  # use encode directly
-    persist_directory="./hotel_gist_db"
-)
 
 # Tool to create a new booking for a given user ID
 @tool
@@ -125,13 +100,26 @@ def reschedule_booking(user_id: str, new_checkin: str, new_checkout: str) -> str
 @tool
 def hotel_info(question: str) -> str:
     """
-    Provides hotel info: amenities, check-in/out, location, etc.
+    Provides hotel info: amenities, check-in/out, location, etc., using a SQLite table lookup.
     """
     try:
-        hits = vector_db.similarity_search(question, k=2)
-        return "\n".join([doc.page_content for doc in hits]) if hits else "No info found."
+        question = question.lower()
+        cursor = conn.cursor()
+
+        if "amenities" in question or "facilities" in question or "features" in question:
+            cursor.execute("SELECT content FROM hotel_info WHERE type = 'amenity'")
+        elif "check-in" in question or "check-out" in question or "policy" in question or "rules" in question:
+            cursor.execute("SELECT content FROM hotel_info WHERE type = 'policy'")
+        elif "location" in question or "address" in question or "where" in question:
+            cursor.execute("SELECT content FROM hotel_info WHERE type = 'location'")
+        else:
+            return "Sorry, I couldn't understand your question."
+
+        row = cursor.fetchone()
+        return row[0] if row else "No information found."
     except Exception as e:
         return f"Error retrieving hotel info: {e}"
+
 
 
 # ─── Agent State & Model Setup ───────────────────────────────────────────────────
@@ -202,25 +190,17 @@ system_prompt = (
 )
 abot = Agent(llm, tools, checkpointer=memory, system=system_prompt)
 
-# ─── Example driver ──────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    messages = [HumanMessage(content="I want to book a room")]
-    config = {"configurable": {"thread_id": "1"}}
+def process_message_from_instagram(user_id: str, text: str) -> str:
+    from langchain.schema import HumanMessage
+    config = {"configurable": {"thread_id": user_id}}
+    messages = [HumanMessage(content=text)]
     try:
-      for event in abot.graph.stream({"messages": messages}, config):
-        for node_out in event.values():
-            for msg in node_out["messages"]:
-                print(f"{type(msg).__name__}: {msg.content}")
+        responses = []
+        for event in abot.graph.stream({"messages": messages}, config):
+            for node_out in event.values():
+                for msg in node_out["messages"]:
+                    responses.append(msg.content)
+        return "\n".join(responses)
     except Exception as e:
-        print(f"Fatal error in agent execution: {e}")
-
-messages = [HumanMessage(content="I want to know location of hotel")]
-config = {"configurable": {"thread_id": "1"}}
-try:
-  for event in abot.graph.stream({"messages": messages}, config):
-    for node_out in event.values():
-        for msg in node_out["messages"]:
-            print(f"{type(msg).__name__}: {msg.content}")
-except Exception as e:
-    print(f"Fatal error in agent execution: {e}")
+        return f"Error processing your request: {e}"
 
